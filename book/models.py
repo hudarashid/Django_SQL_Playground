@@ -20,10 +20,11 @@ class Book(models.Model):
     # language_iso = models.CharField(max_length=6, null=True)
     description = models.TextField()
 
-    constraints = [
-            models.UniqueConstraint(
-                fields=['author', 'language'],
-                name='unique_author_language'
-            )
-        ]
+    class Meta:
+        constraints = [
+                models.UniqueConstraint(
+                    fields=['author', 'language'],
+                    name='unique_author_language'
+                )
+            ]
 
