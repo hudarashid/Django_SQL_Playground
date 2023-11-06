@@ -7,10 +7,14 @@ class LanguageAdmin(admin.ModelAdmin):
 
     list_display = ("name",)
 
+class AuthorAdmin(admin.ModelAdmin):
+    model = models.Author
+
 class BookAdmin(admin.ModelAdmin):
     model = models.Book
 
 
 
 admin.site.register(models.Book)
+admin.site.register(models.Author)
 admin.site.register(models.Language)
