@@ -1,91 +1,59 @@
 from faker import Faker
 
-
 from book import models, serializers
 
-from rest_framework.views import APIView
+from rest_framework.generics import RetrieveUpdateDestroyAPIView
 from rest_framework.response import Response
-from rest_framework import status
+from rest_framework import status, exceptions
 
 faker = Faker()
 
 
-# TODO: to refactor API View
-class BookAPIView(APIView):
+class BookDetailAPIView(RetrieveUpdateDestroyAPIView):
     """
-    List all book, or create a new book.
+    Get book detail by id
     """
 
-    def get(self, request, format=None):
-        books = models.Book.objects.all()
-        serializer = serializers.BookSerializer(books, many=True)
-        return Response(serializer.data)
+    response_serializer = serializers.BookSerializer
 
-    def post(self, request, format=None):
-        serializer = serializers.BookSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    def get_book(self, pk):
+        try:
+            return models.Book.objects.get(pk=pk)
+        except models.Book.DoesNotExist:
+            raise exceptions.NotFound(detail=f"Book with id: {pk} does not exist.")
+
+    def get(self, request, pk, format=None):
+        book = self.get_book(pk)
+        serializer = self.response_serializer(book)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
-class BookSummaryAPIView(APIView):
+class BookSummaryAPIView(RetrieveUpdateDestroyAPIView):
     """
     Create a new book summary.
     """
 
-    def post(self, request, format=None):
-        # Deserialize the request data
-        serializer = serializers.BookSerializer(data=request.data)
+    response_serializer = serializers.BookSummarySerializer
 
-        if serializer.is_valid():
-            # Extract book ID from the request data
-            book_id = request.data.get("id")
+    def get_book(self, pk):
+        try:
+            return models.Book.objects.get(pk=pk)
+        except models.Book.DoesNotExist:
+            raise exceptions.NotFound(detail=f"Book with id: {pk} does not exist.")
 
-            if book_id is not None:
-                # Retrieve the book by ID
-                try:
-                    book = models.Book.objects.get(pk=book_id)
-                except models.Book.DoesNotExist:
-                    return Response(
-                        {"error": f"Book with ID {book_id} does not exist."},
-                        status=status.HTTP_404_NOT_FOUND,
-                    )
+    def post(self, request, pk, format=None):
+        book = self.get_book(pk)
 
-                # Check if the book has a summary
-                if book.book_summary:
-                    # If a summary exists, return the summary data
-                    summary_serializer = serializers.BookSummarySerializer(
-                        book.book_summary
-                    )
-                    return Response(summary_serializer.data)
+        # Check if the book has a summary
+        if not book.book_summary:
+            # If the book does not have a summary, create a new book summary
+            book_summary = models.BookSummary.objects.create(
+                title=book.title, description=faker.text(), created_by=book.author
+            )
 
-                # If the book does not have a summary, create a new summary
-                summary_data = {
-                    "title": book.title,
-                    "description": faker.text(),
-                    "created_by": book.author.id,  # Assuming 'created_by' refers to the author ID
-                }
+            book.book_summary = book_summary
+            book.save(is_new_book_summary=True)
 
-                # Create a new BookSummary instance
-                summary_serializer = serializers.BookSummarySerializer(
-                    data=summary_data
-                )
-                if summary_serializer.is_valid():
-                    summary_serializer.save()
-                    return Response(
-                        summary_serializer.data, status=status.HTTP_201_CREATED
-                    )
-                    ###
-                    ### TODO: get the book id and save the book_summary
-                    ###
+        summary_serializer = self.response_serializer(book.book_summary)
 
-                return Response(
-                    summary_serializer.errors, status=status.HTTP_400_BAD_REQUEST
-                )
-
-            # If the request data does not include a book ID, create a new book without a summary
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        return Response(summary_serializer.data, status=status.HTTP_200_OK)
