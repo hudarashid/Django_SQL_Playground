@@ -30,9 +30,15 @@ class Book(models.Model):
         BookSummary, on_delete=models.DO_NOTHING, blank=True, null=True
     )
 
-    class Meta:
-        constraints = [
-            models.UniqueConstraint(
-                fields=["author", "language"], name="unique_author_language"
-            )
-        ]
+    def book_summary_created(self, **kwargs):
+        is_new_book_summary = kwargs.get("is_new_book_summary", False)
+
+        if self.book_summary and is_new_book_summary:
+            print(f"📚 New book summary {self.book_summary} is created!")
+
+    def save(self, *args, **kwargs):
+        is_new_book_summary = kwargs.pop("is_new_book_summary", not bool(self.pk))
+
+        super().save(*args, **kwargs)
+
+        self.book_summary_created(is_new_book_summary=is_new_book_summary)
