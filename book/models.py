@@ -18,8 +18,6 @@ class BookSummary(models.Model):
     description = models.TextField()
     created_by = models.ForeignKey(Author, on_delete=models.CASCADE, null=True)
 
-    # whenever this got created(parent), then the book will get updated
-
 
 class Book(models.Model):
     title = models.CharField(max_length=200)
